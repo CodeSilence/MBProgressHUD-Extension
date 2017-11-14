@@ -2,41 +2,78 @@
 //  MBProgressHUD+Extension.swift
 //  
 //
-//  Created by silence on 2017/6/6.
-//  Copyright © 2017年 silence. All rights reserved.
+//  Created by Devin on 2017/6/6.
+//  Copyright © 2017年 Devin. All rights reserved.
 //
 
 import UIKit
 import MBProgressHUD
 
-enum MBProgressHUDMessageLocation : Int {
+public enum MBProgressHUDMessageLocation : Int {
     case center = 0, bottom = 1000000, top = -1000000
 }
 
 extension MBProgressHUD {
     
-    /// Show Loading and Text
+    private static var swiftAnyClass:Swift.AnyClass? = nil
+    
+    /// 显示loading和文字
     ///
     /// - Parameters:
-    ///   - view: `nil` -> window
-    ///   - text: default `nil`
-    static func showLoading(_ view:UIView?, text:String? = nil) {
+    ///   - view: 如果传入`nil`,则显示在Window上
+    ///   - text: 默认为 `nil`
+    public static func showLoading(_ view:UIView?, text:String? = nil) {
         showText(text: text, icon: nil, view: view)
     }
     
-    /// Only Message text
+    /// 显示进度和文字
     ///
     /// - Parameters:
-    ///   - text: default `Message here!`
-    ///   - location: default `center`
-    ///   - afterDelay: default `3`
-    static func showMessage(_ text:String = "Message here!", location:MBProgressHUDMessageLocation = .center, afterDelay:TimeInterval = 3) {
+    ///   - view: 如果传入`nil`,则显示在Window上
+    ///   - text: 默认为 `nil`
+    public static func showProgress(_ view:UIView?, text:String? = nil) {
+        let view = currentlyWithShow(view)
+        let hud = MBProgressHUD.showAdded(to: view, animated: true)
+        hud.bezelView.backgroundColor = rgbaColorFromHex(rgb: 0x000000, alpha: 0.8)
+        hud.contentColor = UIColor.white
+        hud.mode = .annularDeterminate
+        if text != nil {
+            hud.label.text = text
+        }
+    }
+    
+    /// 设置显示进度,对应showProgress(:)方法
+    ///
+    /// - Parameters:
+    ///   - view: 如果传入`nil`,则显示在Window上
+    ///   - progress: 进度,Float类型
+    ///   - text: 默认为 `nil`
+    public static func setShowProgress(_ view:UIView?, progress:Float, text:String? = nil) {
+        let view = currentlyWithShow(view)
+        MBProgressHUD(for: view)!.progress = progress
+        if text != nil, !text!.isEmpty {
+            MBProgressHUD(for: view)!.label.text = text
+        }
+    }
+    
+    /// 仅显示文本
+    ///
+    /// - Parameters:
+    ///   - text: String
+    ///   - location: 默认在底部显示
+    ///   - afterDelay: 默认持续2秒
+    public static func showMessage(_ text:String?, location:MBProgressHUDMessageLocation = .bottom, afterDelay:TimeInterval = 2) {
+        
+        guard text != nil else {
+            return
+        }
         
         let view = currentlyWithShow(nil)
         let hud = MBProgressHUD.showAdded(to: view, animated: true)
         hud.mode = .text
         hud.label.text = text
         hud.label.textColor = UIColor.white
+        hud.label.numberOfLines = 0
         hud.offset = CGPoint(x: 0, y: location.rawValue)
         hud.bezelView.backgroundColor = rgbaColorFromHex(rgb: 0x000000, alpha: 0.8)
         hud.hide(animated: true, afterDelay: afterDelay)
@@ -46,47 +83,65 @@ extension MBProgressHUD {
     ///
     ///  text is `nil`, show image
     /// - Parameter text: default `nil`
-    static func showSuccess(_ text: String? = nil) {
+    public static func showSuccess(_ text: String? = nil) {
         let view = currentlyWithShow(nil)
-        showText(text: text, icon: "Checkmark", view: view)
+        showText(text: text, icon: swiftAnyClass ? "CheckmarkW" : "Checkmark", view: view)
     }
     
     /// Error
     ///
     ///  text is `nil` , show image
     /// - Parameter text: default `nil`
-    static func showError(_ text: String? = nil ) {
+    public static func showError(_ text: String? = nil ) {
         let view = currentlyWithShow(nil)
-        showText(text: text, icon: "Error", view: view)
+        showText(text: text, icon: swiftAnyClass ? "ErrorW" : "Error", view: view)
     }
     
     /// Dismiss
     ///
     /// - Parameter view: `nil` -> window
-    static func dismiss(_ view:UIView?) {
+    public static func dismiss(_ view:UIView?) {
         let view = currentlyWithShow(view)
         DispatchQueue.main.async {
             MBProgressHUD.hide(for: view, animated: true)
         }
     }
     
+    /// 当前扩展做自己的库时，调用
+    ///
+    /// - Parameter swiftClass: 当前库任意同级的Swift Class文件,用于定位`bundle`
+    public static func setClass(_ swiftClass:Swift.AnyClass) {
+        swiftAnyClass = swiftClass
+    }
+    
     fileprivate static func showText(text: String? = nil, icon: String?, view:UIView?) {
         let view = currentlyWithShow(view)
+        // 避免覆盖
+        MBProgressHUD.hide(for: view, animated: true)
         let hud = MBProgressHUD.showAdded(to: view, animated: true)
         hud.bezelView.backgroundColor = rgbaColorFromHex(rgb: 0x000000, alpha: 0.8)
         hud.contentColor = UIColor.white
         if icon != nil && icon!.characters.count > 0 {
             hud.mode = .customView
-            let image = UIImage(named: "MBProgressHUD.bundle/" + icon!)!.withRenderingMode(.alwaysTemplate)
-            hud.customView = UIImageView(image: image)
+            
+            var image = UIImage()
+            if swiftAnyClass != nil {
+                let bundle =  Bundle(for: swiftAnyClass!)
+                let url = bundle.url(forResource: "MBProgressHUD", withExtension: "bundle")!
+                let imageBundle = Bundle(url: url)!
+                image = UIImage(named: icon!, in: imageBundle, compatibleWith: nil)
+            }else {
+                image = UIImage(named: "MBProgressHUD.bundle/" + icon!)!.withRenderingMode(.alwaysTemplate)
+            }
+            var imageView = UIImageView(image: image)
+            hud.customView = imageView
             hud.isSquare = true
             hud.removeFromSuperViewOnHide = true
-            hud.hide(animated: true, afterDelay: 3)
+            hud.hide(animated: true, afterDelay: 2)
         }
         
         if text != nil {
             hud.label.text = text
-            hud.label.textColor = UIColor.white
         }
     }
     
