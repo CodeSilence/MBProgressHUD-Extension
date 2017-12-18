@@ -69,14 +69,17 @@ extension MBProgressHUD {
         }
         
         let view = currentlyWithShow(nil)
-        let hud = MBProgressHUD.showAdded(to: view, animated: true)
-        hud.mode = .text
-        hud.label.text = text
-        hud.label.textColor = UIColor.white
-        hud.label.numberOfLines = 0
-        hud.offset = CGPoint(x: 0, y: location.rawValue)
-        hud.bezelView.backgroundColor = rgbaColorFromHex(rgb: 0x000000, alpha: 0.8)
-        hud.hide(animated: true, afterDelay: afterDelay)
+        DispatchQueue.main.async {
+            let hud = MBProgressHUD.showAdded(to: view, animated: true)
+            hud.mode = .text
+            hud.label.text = text
+            hud.label.textColor = UIColor.white
+            hud.label.numberOfLines = 0
+            hud.label.font = UIFont.systemFont(ofSize: 18)
+            hud.offset = CGPoint(x: 0, y: location.rawValue)
+            hud.bezelView.backgroundColor = rgbaColorFromHex(rgb: 0x000000, alpha: 0.8)
+            hud.hide(animated: true, afterDelay: afterDelay)
+        }
     }
     
     /// Success
@@ -116,32 +119,42 @@ extension MBProgressHUD {
     
     fileprivate static func showText(text: String? = nil, icon: String?, view:UIView?) {
         let view = currentlyWithShow(view)
-        // 避免覆盖
-        MBProgressHUD.hide(for: view, animated: true)
-        let hud = MBProgressHUD.showAdded(to: view, animated: true)
-        hud.bezelView.backgroundColor = rgbaColorFromHex(rgb: 0x000000, alpha: 0.8)
-        hud.contentColor = UIColor.white
-        if icon != nil && icon!.characters.count > 0 {
-            hud.mode = .customView
-            
-            var image = UIImage()
+        var imageView:UIImageView?
+    
+        // 拿取图片
+        if icon != nil && icon!.count > 0 {
+            var image:UIImage?
             if swiftAnyClass != nil {
-                let bundle =  Bundle(for: swiftAnyClass!)
+                let bundle = Bundle(for: swiftAnyClass!)
                 let url = bundle.url(forResource: "MBProgressHUD", withExtension: "bundle")!
                 let imageBundle = Bundle(url: url)!
                 image = UIImage(named: icon!, in: imageBundle, compatibleWith: nil)
             }else {
                 image = UIImage(named: "MBProgressHUD.bundle/" + icon!)!.withRenderingMode(.alwaysTemplate)
             }
-            var imageView = UIImageView(image: image)
-            hud.customView = imageView
-            hud.isSquare = true
-            hud.removeFromSuperViewOnHide = true
-            hud.hide(animated: true, afterDelay: 2)
+            
+            if image != nil {
+                imageView = UIImageView(image: image)
+            }
         }
         
-        if text != nil {
-            hud.label.text = text
+        DispatchQueue.main.async {
+             // 避免覆盖
+            MBProgressHUD.hide(for: view, animated: true)
+            let hud = MBProgressHUD.showAdded(to: view, animated: true)
+            hud.bezelView.backgroundColor = rgbaColorFromHex(rgb: 0x000000, alpha: 0.8)
+            hud.contentColor = UIColor.white
+            if imageView != nil {
+                hud.mode = .customView
+                hud.customView = imageView
+                hud.isSquare = true
+                hud.removeFromSuperViewOnHide = true
+                hud.hide(animated: true, afterDelay: 2)
+            }
+            
+            if text != nil {
+                hud.label.text = text
+            }
         }
     }
     
